@@ -1,4 +1,4 @@
-package net.technearts.xp
+package net.technearts.xp.lox
 
 
 internal class AstPrinter : Expr.Visitor<String> {

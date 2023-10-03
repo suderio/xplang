@@ -1,6 +1,6 @@
-package net.technearts.xp
+package net.technearts.xp.lox
 
-import net.technearts.xp.TokenType.*
+import net.technearts.xp.lox.TokenType.*
 
 internal class Scanner(private val source: String) {
     private var tokens: List<Token> = ArrayList()
@@ -40,6 +40,7 @@ internal class Scanner(private val source: String) {
             ']' -> addToken(RIGHT_BRACKET)
             '{' -> addToken(LEFT_BRACE)
             '}' -> addToken(RIGHT_BRACE)
+            ',' -> addToken(COMMA)
             '-' -> addToken(MINUS)
             '+' -> addToken(PLUS)
             ';' -> addToken(SEMICOLON)
@@ -50,14 +51,14 @@ internal class Scanner(private val source: String) {
             '%' -> addToken(PERCENT)
             '@' -> addToken(AT)
             '/' -> addToken(SLASH)
-            ':' -> addToken(COLON)
+            ':' -> addToken(if (match('=')) COLON_EQUAL else COLON)
             '<' -> addToken(if (match('=')) LESS_EQUAL else if (match('>')) LESS_GREATER else LESS)
             '>' -> addToken(if (match('=')) GREATER_EQUAL else GREATER)
             '|' -> addToken(if (match('|')) PIPE_PIPE else PIPE)
             '&' -> addToken(if (match('&')) AMPERSAND_AMPERSAND else AMPERSAND)
             '.' -> addToken(if (match('.')) DOT_DOT else DOT)
             '#' -> while (peek() != '\n' && !isAtEnd()) advance() // A comment goes until the end of the line.
-            ' ', '\r', '\t', ',' -> {} // Ignore whitespace and number class separator.
+            ' ', '\r', '\t' -> {} // Ignore whitespace.
             '\n' -> line++
             '"' -> string()
             else -> if (isDigit(c)) {
@@ -124,10 +125,8 @@ internal class Scanner(private val source: String) {
             // Consume the "."
             advance()
             while (isDigit(peek())) advance()
-            addToken(NUMBER, source.substring(start, current).toBigDecimal())
-        } else {
-            addToken(NUMBER, source.substring(start, current).toBigInteger())
         }
+        addToken(NUMBER, source.substring(start, current).toDouble())
     }
 
     private fun peekNext(): Char {
@@ -156,3 +155,24 @@ Comment: #
 IO: @ # @in @out @err @/file
  */
 
+enum class TokenType {
+    // Single-character tokens.
+    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE, LEFT_BRACKET, RIGHT_BRACKET, COMMA, EQUAL, MINUS, PLUS, SEMICOLON, SLASH, STAR, TILDE, CIRCUMFLEX, PERCENT, AT,
+
+    // One or two character tokens.
+    LESS_GREATER, COLON, COLON_EQUAL, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, PIPE, PIPE_PIPE, AMPERSAND, AMPERSAND_AMPERSAND, DOT, DOT_DOT,
+
+    // Literals.
+    IDENTIFIER, STRING, NUMBER,
+
+    // Keywords.
+    FALSE, LEFT, NULL, RIGHT, THIS, TRUE, EOF
+}
+
+class Token(
+    val type: TokenType, val lexeme: String, val literal: Any?, val line: Int
+) {
+    override fun toString(): String {
+        return "$type $lexeme $literal"
+    }
+}

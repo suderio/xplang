@@ -1,0 +1,15 @@
+package net.technearts.xp
+
+enum class TokenType {
+    // Single-character tokens.
+    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE, LEFT_BRACKET, RIGHT_BRACKET, EQUAL, MINUS, PLUS, SEMICOLON, SLASH, STAR, TILDE, CIRCUMFLEX, PERCENT, AT,
+
+    // One or two character tokens.
+    LESS_GREATER, COLON, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, PIPE, PIPE_PIPE, AMPERSAND, AMPERSAND_AMPERSAND, DOT, DOT_DOT,
+
+    // Literals.
+    IDENTIFIER, STRING, NUMBER,
+
+    // Keywords.
+    FALSE, LEFT, NULL, RIGHT, THIS, TRUE, EOF
+}

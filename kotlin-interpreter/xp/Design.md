@@ -61,8 +61,8 @@ succ 1
 Arithm: + - * / ^ % ( ) 
 Comp: < > <= >= = <> # lt gt le ge eq ne
 Logic: | || & && ~ true false # or or! and and! not
-List: [ ] : " { } ... # Llist Rlist Def/key String LIndex RIndex Intersect Elipsis
-Reference: left right this null
+List: [ ] : " { } .. # Llist Rlist Def/key String LIndex RIndex Intersect Range
+Reference: left right this null :=
 Comment: # 
 IO: @ # @in @out @err @/file
 
@@ -103,10 +103,39 @@ a: 1; b: 2; c: 4 = [a: 1 b: 2 c: 4]
 
 ## Grammar
 
-expression     → equality ;
+program        → statement* EOF ;
+statement      → exprStmt | printStmt ;
+exprStmt       → expression ";" ;
+printStmt      → "print" expression ";" ;
+expression     → assignment ;
+assignment     → IDENTIFIER ":" assignment | equality ;
 equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 term           → factor ( ( "-" | "+" ) factor )* ;
 factor         → unary ( ( "/" | "*" ) unary )* ;
 unary          → ( "!" | "-" ) unary | primary ;
-primary        → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+primary        → NUMBER | STRING | "true" | "false" | "null" | "(" expression ")" | IDENTIFIER ;
+
+---
+
+file        : statement* EOF ;
+statement   : exprStmt | ioStmt ;
+exprStmt    : expression ";" ;
+ioStmt      : "@" channel expression ";" ;
+channel     : "in" | "out" | "err" | "now" | "xp" STRING | STRING 
+expression  : assignment ;
+assignment  : IDENTIFIER ":" assignment | equality ;
+equality    : comparison ( ( "!=" | "==" ) comparison )* ;
+comparison  : term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+term        : factor ( ( "-" | "+" ) factor )* ;
+factor      : unary ( ( "/" | "*" ) unary )* ;
+unary       : ( "~" | "-" ) unary | primary ;
+primary     : NUMBER | STRING | "true" | "false" | "null" | "this" | "right" | "left" | "(" expression ")" | IDENTIFIER ;
+
+file        : expression* EOF ;
+expression  : binary ;
+binary      : unary (binaryOp unary)* ;
+binaryOp    : "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "@" | ":" | ";" | "|" | "||" | "&" | "&&" | "^" | "%" | IDENTIFIER
+unary       : unaryOp unary | primary ;
+unaryOp     : "~" | "-" | IDENTIFIER
+primary     : "true" | "false" | "null" | "this" | "right" | "left" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;

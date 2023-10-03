@@ -2,43 +2,17 @@ package net.technearts.xp
 
 import net.technearts.xp.TokenType.*
 
-
-internal class Parser(private val tokens: List<Token>) {
-
+class Parser(private val tokens: List<Token>) {
     private class ParseError : RuntimeException()
 
     private var current = 0
 
-    fun parse(): Expr? {
-        return try {
-            expression()
-        } catch (error: ParseError) {
-            null
+    fun parse(): List<Expr> {
+        val expressions = ArrayList<Expr>()
+        while (!isAtEnd()) {
+            expressions += expression()
         }
-    }
-
-    private fun match(vararg types: TokenType): Boolean {
-        for (type in types) {
-            if (check(type)) {
-                advance()
-                return true
-            }
-        }
-        return false
-    }
-
-    private fun consume(type: TokenType, message: String): Token? {
-        if (check(type)) return advance()
-        throw error(peek(), message)
-    }
-
-    private fun check(type: TokenType): Boolean {
-        return if (isAtEnd()) false else peek().type === type
-    }
-
-    private fun advance(): Token {
-        if (!isAtEnd()) current++
-        return previous()
+        return expressions
     }
 
     private fun isAtEnd(): Boolean {
@@ -53,56 +27,67 @@ internal class Parser(private val tokens: List<Token>) {
         return tokens[current - 1]
     }
 
+    private fun advance(): Token {
+        if (!isAtEnd()) current++
+        return previous()
+    }
+
+    private fun match(vararg types: TokenType): Boolean {
+        for (type in types) {
+            if (check(type)) {
+                advance()
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun check(type: TokenType): Boolean {
+        return if (isAtEnd()) false else peek().type === type
+    }
+
+    private fun consume(type: TokenType, message: String): Token {
+        if (check(type)) return advance()
+        throw error(peek(), message)
+    }
+
     private fun error(token: Token, message: String): ParseError {
         error(token, message)
         return ParseError()
     }
 
-    private fun synchronize() {
-        advance()
-        while (!isAtEnd()) {
-            if (previous().type === SEMICOLON) return
-            advance()
-        }
-    }
-
     private fun expression(): Expr {
-        return equality()
-    }
-    private fun equality(): Expr {
-        var expr: Expr = comparison()
-        while (match(BANG_EQUAL, EQUAL_EQUAL)) {
-            val operator: Token = previous()
-            val right: Expr = comparison()
-            expr = Expr.Binary(expr, operator, right)
-        }
-        return expr
+        return binary()
     }
 
-    private fun comparison(): Expr {
-        var expr: Expr = term()
-        while (match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL)) {
-            val operator = previous()
-            val right: Expr = term()
-            expr = Expr.Binary(expr, operator, right)
-        }
-        return expr
-    }
-
-    private fun term(): Expr {
-        var expr: Expr = factor()
-        while (match(MINUS, PLUS)) {
-            val operator = previous()
-            val right: Expr = factor()
-            expr = Expr.Binary(expr, operator, right)
-        }
-        return expr
-    }
-
-    private fun factor(): Expr {
+    private fun binary(): Expr {
         var expr: Expr = unary()
-        while (match(SLASH, STAR)) {
-            val operator = previous()
+        while (match(
+                LESS_GREATER,
+                EQUAL,
+                EQUAL,
+                MINUS,
+                PLUS,
+                SEMICOLON,
+                SLASH,
+                STAR,
+                CIRCUMFLEX,
+                PERCENT,
+                AT,
+                LESS_GREATER,
+                COLON,
+                GREATER,
+                GREATER_EQUAL,
+                LESS,
+                LESS_EQUAL,
+                PIPE,
+                PIPE_PIPE,
+                AMPERSAND,
+                AMPERSAND_AMPERSAND,
+                DOT_DOT
+            )
+        ) {
+            val operator: Token = previous()
             val right: Expr = unary()
             expr = Expr.Binary(expr, operator, right)
         }
@@ -110,7 +95,7 @@ internal class Parser(private val tokens: List<Token>) {
     }
 
     private fun unary(): Expr {
-        if (match(BANG, MINUS)) {
+        if (match(TILDE, MINUS)) {
             val operator = previous()
             val right = unary()
             return Expr.Unary(operator, right)
@@ -121,15 +106,33 @@ internal class Parser(private val tokens: List<Token>) {
     private fun primary(): Expr {
         if (match(FALSE)) return Expr.Literal(false)
         if (match(TRUE)) return Expr.Literal(true)
-        if (match(NIL)) return Expr.Literal(null)
+        if (match(NULL)) return Expr.Literal(null)
+        if (match(THIS)) TODO()
+        if (match(LEFT)) TODO()
+        if (match(RIGHT)) TODO()
         if (match(NUMBER, STRING)) {
             return Expr.Literal(previous().literal!!)
+        }
+        if (match(IDENTIFIER)) {
+            TODO()
+            //return Expr.Variable(previous())
         }
         if (match(LEFT_PAREN)) {
             val expr = expression()
             consume(RIGHT_PAREN, "Expect ')' after expression.")
             return Expr.Grouping(expr)
         }
-        throw error(peek(), "Expect expression.");
+        if (match(LEFT_BRACKET)) {
+            val expr = expression()
+            consume(RIGHT_BRACKET, "Expect ']' after expression.")
+            return Expr.Grouping(expr)
+        }
+        if (match(LEFT_BRACE)) {
+            val expr = expression()
+            consume(RIGHT_BRACE, "Expect '}' after expression.")
+            return Expr.Grouping(expr)
+        }
+        throw error(peek(), "Expect expression.")
     }
+
 }
