@@ -19,4 +19,11 @@ class ExpressionTest {
             runFile(Paths.get("./src/test/resources/Comparisons").toRealPath().pathString)
         }
     }
+
+    @Test
+    fun lists() {
+        Assertions.assertDoesNotThrow {
+            runFile(Paths.get("./src/test/resources/Lists").toRealPath().pathString)
+        }
+    }
 }
