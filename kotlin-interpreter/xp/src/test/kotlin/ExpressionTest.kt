@@ -12,4 +12,11 @@ class ExpressionTest {
             runFile(Paths.get("./src/test/resources/Arithmetics").toRealPath().pathString)
         }
     }
+
+    @Test
+    fun comparisons() {
+        Assertions.assertDoesNotThrow {
+            runFile(Paths.get("./src/test/resources/Comparisons").toRealPath().pathString)
+        }
+    }
 }
