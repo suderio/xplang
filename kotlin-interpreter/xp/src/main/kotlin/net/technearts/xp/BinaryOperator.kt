@@ -1,5 +1,6 @@
 package net.technearts.xp
 
+import net.technearts.math.BigDecimalMath
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.math.BigInteger.ONE
@@ -7,7 +8,12 @@ import java.math.BigInteger.ZERO
 import java.math.BigDecimal.ONE as D_ONE
 import java.math.BigDecimal.ZERO as D_ZERO
 
-abstract class Operator {
+interface ShortCircuit {
+    fun proceed(left: Any): Boolean
+    fun shortCircuitValue(): Boolean
+}
+
+abstract class BinaryOperator {
     abstract infix fun BigDecimal.op(right: Any): Any
     abstract infix fun BigInteger.op(right: Any): Any
     abstract infix fun Boolean.op(right: Any): Any
@@ -24,9 +30,10 @@ abstract class Operator {
             else -> throw RuntimeException("Unknown Type: $left")
         }
     }
+
 }
 
-class Sum : Operator() {
+class Sum : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this.add(right)
         is BigInteger -> this.add(right.toBigDecimal())
@@ -73,7 +80,7 @@ class Sum : Operator() {
     }
 }
 
-class Sub : Operator() {
+class Sub : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this.subtract(right)
         is BigInteger -> this.subtract(right.toBigDecimal())
@@ -120,7 +127,7 @@ class Sub : Operator() {
     }
 }
 
-class Mul : Operator() {
+class Mul : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this.multiply(right)
         is BigInteger -> this.multiply(right.toBigDecimal())
@@ -168,7 +175,7 @@ class Mul : Operator() {
 }
 
 
-class Pow : Operator() {
+class Pow : BinaryOperator() {
 
     private fun BigDecimal.pow(right: BigDecimal): BigDecimal {
         return BigDecimalMath.pow(this, right)
@@ -221,7 +228,7 @@ class Pow : Operator() {
 }
 
 
-class Div : Operator() {
+class Div : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this.divide(right)
         is BigInteger -> this.divide(right.toBigDecimal())
@@ -269,7 +276,7 @@ class Div : Operator() {
 }
 
 
-class Mod : Operator() {
+class Mod : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this.toBigInteger().mod(right.toBigInteger())
         is BigInteger -> this.toBigInteger().mod(right)
@@ -319,7 +326,7 @@ class Mod : Operator() {
 //**************************************************//
 
 
-class GT : Operator() {
+class GT : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this > right
         is BigInteger -> this > right.toBigDecimal()
@@ -366,7 +373,7 @@ class GT : Operator() {
     }
 }
 
-class GE : Operator() {
+class GE : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this >= right
         is BigInteger -> this >= right.toBigDecimal()
@@ -414,7 +421,7 @@ class GE : Operator() {
 }
 
 
-class LT : Operator() {
+class LT : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this < right
         is BigInteger -> this < right.toBigDecimal()
@@ -461,8 +468,7 @@ class LT : Operator() {
     }
 }
 
-
-class LE : Operator() {
+class LE : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this <= right
         is BigInteger -> this <= right.toBigDecimal()
@@ -509,8 +515,7 @@ class LE : Operator() {
     }
 }
 
-
-class EQ : Operator() {
+class EQ : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this == right
         is BigInteger -> this == right.toBigDecimal()
@@ -557,8 +562,7 @@ class EQ : Operator() {
     }
 }
 
-
-class NE : Operator() {
+class NE : BinaryOperator() {
     override fun BigDecimal.op(right: Any): Any = when (right) {
         is BigDecimal -> this != right
         is BigInteger -> this != right.toBigDecimal()
@@ -605,3 +609,119 @@ class NE : Operator() {
     }
 }
 
+class And : ShortCircuit, BinaryOperator() {
+    override fun BigDecimal.op(right: Any): Any = when (right) {
+        is BigDecimal -> this != D_ZERO && right != D_ZERO
+        is BigInteger -> this != D_ZERO && right != ZERO
+        is Boolean -> this != D_ZERO && right
+        is String -> this != D_ZERO && right.isNotEmpty()
+        is List<*> -> this != D_ZERO && right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun BigInteger.op(right: Any): Any = when (right) {
+        is BigDecimal -> this != ZERO && right != D_ZERO
+        is BigInteger -> this != ZERO && right != ZERO
+        is Boolean -> this != ZERO && right
+        is String -> this != ZERO && right.isNotEmpty()
+        is List<*> -> this != ZERO && right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun Boolean.op(right: Any): Any = when (right) {
+        is BigDecimal -> this && right != D_ZERO
+        is BigInteger -> this && right != ZERO
+        is Boolean -> this && right
+        is String -> this && right.isNotEmpty()
+        is List<*> -> this && right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun String.op(right: Any): Any = when (right) {
+        is BigDecimal -> this.isNotEmpty() && right != D_ZERO
+        is BigInteger -> this.isNotEmpty() && right != ZERO
+        is Boolean -> this.isNotEmpty() && right
+        is String -> this.isNotEmpty() && right.isNotEmpty()
+        is List<*> -> this.isNotEmpty() && right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun List<*>.op(right: Any): Any = when (right) {
+        is BigDecimal -> this.isNotEmpty() && right != D_ZERO
+        is BigInteger -> this.isNotEmpty() && right != ZERO
+        is Boolean -> this.isNotEmpty() && right
+        is String -> this.isNotEmpty() && right.isNotEmpty()
+        is List<*> -> this.isNotEmpty() && right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun proceed(left: Any): Boolean = when (left) {
+        is BigDecimal -> left != D_ZERO
+        is BigInteger -> left != ZERO
+        is Boolean -> left
+        is String -> left.isNotEmpty()
+        is List<*> -> left.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $left")
+    }
+
+    override fun shortCircuitValue() = false
+}
+
+
+class Or : ShortCircuit, BinaryOperator() {
+    override fun BigDecimal.op(right: Any): Any = when (right) {
+        is BigDecimal -> this != D_ZERO || right != D_ZERO
+        is BigInteger -> this != D_ZERO || right != ZERO
+        is Boolean -> this != D_ZERO || right
+        is String -> this != D_ZERO || right.isNotEmpty()
+        is List<*> -> this != D_ZERO || right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun BigInteger.op(right: Any): Any = when (right) {
+        is BigDecimal -> this != ZERO || right != D_ZERO
+        is BigInteger -> this != ZERO || right != ZERO
+        is Boolean -> this != ZERO || right
+        is String -> this != ZERO || right.isNotEmpty()
+        is List<*> -> this != ZERO || right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun Boolean.op(right: Any): Any = when (right) {
+        is BigDecimal -> this || right != D_ZERO
+        is BigInteger -> this || right != ZERO
+        is Boolean -> this || right
+        is String -> this || right.isNotEmpty()
+        is List<*> -> this || right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun String.op(right: Any): Any = when (right) {
+        is BigDecimal -> this.isNotEmpty() || right != D_ZERO
+        is BigInteger -> this.isNotEmpty() || right != ZERO
+        is Boolean -> this.isNotEmpty() || right
+        is String -> this.isNotEmpty() || right.isNotEmpty()
+        is List<*> -> this.isNotEmpty() || right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun List<*>.op(right: Any): Any = when (right) {
+        is BigDecimal -> this.isNotEmpty() || right != D_ZERO
+        is BigInteger -> this.isNotEmpty() || right != ZERO
+        is Boolean -> this.isNotEmpty() || right
+        is String -> this.isNotEmpty() || right.isNotEmpty()
+        is List<*> -> this.isNotEmpty() || right.isNotEmpty()
+        else -> throw RuntimeException("Unknown Type: $right")
+    }
+
+    override fun proceed(left: Any): Boolean = when (left) {
+        is BigDecimal -> left == D_ZERO
+        is BigInteger -> left == ZERO
+        is Boolean -> !left
+        is String -> left.isEmpty()
+        is List<*> -> left.isEmpty()
+        else -> throw RuntimeException("Unknown Type: $left")
+    }
+
+    override fun shortCircuitValue() = true
+}

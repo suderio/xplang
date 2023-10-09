@@ -63,28 +63,10 @@ class Parser(private val tokens: List<Token>) {
     private fun binary(): Expr {
         var expr: Expr = unary()
         while (match(
-                LESS_GREATER,
-                EQUAL,
-                EQUAL,
-                MINUS,
-                PLUS,
-                SEMICOLON,
-                SLASH,
-                STAR,
-                CIRCUMFLEX,
-                PERCENT,
-                AT,
-                LESS_GREATER,
-                COLON,
-                GREATER,
-                GREATER_EQUAL,
-                LESS,
-                LESS_EQUAL,
-                PIPE,
-                PIPE_PIPE,
-                AMPERSAND,
-                AMPERSAND_AMPERSAND,
-                DOT_DOT
+                PLUS, MINUS, SLASH, STAR, CIRCUMFLEX, PERCENT,
+                GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, LESS_GREATER, EQUAL,
+                PIPE, PIPE_PIPE, AMPERSAND, AMPERSAND_AMPERSAND,
+                SEMICOLON, AT, COLON, DOT_DOT, DOT
             )
         ) {
             val operator: Token = previous()

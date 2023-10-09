@@ -36,7 +36,7 @@ result : 1 + 1
 Using the left and right references.
 
 ```
-fact: [true: 1, false: right * (this (right - 1))] . right <= 1
+fact: {[true: 1, false: right * (this (right - 1))] . right <= 1}
 fact 3
 [true: 1, false: 3 * this (3 - 1)] . 3 <= 1
 [true: 1, false: 3 * this (2)] . false

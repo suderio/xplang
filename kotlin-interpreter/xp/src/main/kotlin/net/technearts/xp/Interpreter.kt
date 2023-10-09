@@ -2,7 +2,8 @@ package net.technearts.xp
 
 import net.technearts.xp.TokenType.*
 import java.math.BigDecimal
-import java.math.BigInteger
+import java.time.LocalDateTime.now
+import java.time.ZoneOffset
 
 class Interpreter : Expr.Visitor<Any> {
     class RuntimeError(val token: Token, message: String?) : RuntimeException(message)
@@ -10,8 +11,8 @@ class Interpreter : Expr.Visitor<Any> {
     private val environment = Environment()
     fun interpret(expressions: List<Expr>) {
         try {
-            for (statement in expressions) {
-                println(evaluate(statement))
+            for (expression in expressions) {
+                println(evaluate(expression))
             }
         } catch (error: RuntimeError) {
             runtimeError(error)
@@ -22,159 +23,82 @@ class Interpreter : Expr.Visitor<Any> {
         return expr.accept(this)
     }
 
+    private fun applyBinaryOperator(expr: Expr.Binary, operator: BinaryOperator, shortCircuit: Boolean = false): Any {
+        return if (shortCircuit && operator is ShortCircuit) {
+            val left = evaluate(expr.left)
+            if (operator.proceed(left)) {
+                operator.op(left, evaluate(expr.right))
+            } else {
+                operator.shortCircuitValue()
+            }
+        } else {
+            operator.op(evaluate(expr.left), evaluate(expr.right))
+        }
+    }
+
     override fun visitBinaryExpr(expr: Expr.Binary): Any {
-        val left = evaluate(expr.left)
-        val right = evaluate(expr.right)
-
         return when (expr.operator.type) {
-            PLUS -> sum(expr.left, expr.right)
-            MINUS -> subtract(expr.left, expr.right)
-            SLASH -> divide(expr.left, expr.right)
-            STAR -> multiply(expr.left, expr.right)
-            GREATER -> left as BigDecimal > right as BigDecimal
-            GREATER_EQUAL -> left as BigDecimal >= right as BigDecimal
-            LESS -> (left as BigDecimal) < (right as BigDecimal)
-            LESS_EQUAL -> left as BigDecimal <= right as BigDecimal
-            EQUAL -> isEqual(left, right)
-            LESS_GREATER -> !isEqual(left, right)
-            SEMICOLON -> cons(left, right)
-            CIRCUMFLEX -> (left as BigDecimal).pow((right as BigDecimal).toInt())
-            PERCENT -> left as BigDecimal % right as BigDecimal
-            AT -> io(left, right)
-            COLON -> Pair(left, right)
-            PIPE -> {
-                val l = left as Boolean
-                val r = right as Boolean
-                l || r
-            }
+            PLUS -> applyBinaryOperator(expr, Sum())
+            MINUS -> applyBinaryOperator(expr, Sub())
+            SLASH -> applyBinaryOperator(expr, Div())
+            STAR -> applyBinaryOperator(expr, Mul())
+            CIRCUMFLEX -> applyBinaryOperator(expr, Pow())
+            PERCENT -> applyBinaryOperator(expr, Mod())
 
-            PIPE_PIPE -> left as Boolean || right as Boolean
-            AMPERSAND -> {
-                val l = left as Boolean
-                val r = right as Boolean
-                l && r
-            }
+            GREATER -> applyBinaryOperator(expr, GT())
+            GREATER_EQUAL -> applyBinaryOperator(expr, GE())
+            LESS -> applyBinaryOperator(expr, LT())
+            LESS_EQUAL -> applyBinaryOperator(expr, LE())
+            EQUAL -> applyBinaryOperator(expr, EQ())
+            LESS_GREATER -> applyBinaryOperator(expr, NE())
 
-            AMPERSAND_AMPERSAND -> left as Boolean && right as Boolean
-            DOT_DOT -> left as BigDecimal..right as BigDecimal
+            PIPE -> applyBinaryOperator(expr, Or())
+            PIPE_PIPE -> applyBinaryOperator(expr, Or(), true)
+            AMPERSAND -> applyBinaryOperator(expr, And())
+            AMPERSAND_AMPERSAND -> applyBinaryOperator(expr, And(), true)
+
+            SEMICOLON -> cons(evaluate(expr.left), evaluate(expr.right))
+            AT -> io(evaluate(expr.left), evaluate(expr.right))
+            COLON -> assign(evaluate(expr.left), evaluate(expr.right))
+            DOT_DOT -> evaluate(expr.left) as BigDecimal..evaluate(expr.right) as BigDecimal
+            DOT -> intersect(evaluate(expr.left), evaluate(expr.right))
+
             else -> {}
         }
     }
 
-    private fun sum(left: Expr, right: Expr): Any {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        return when (l) {
-            is BigDecimal -> {
-                when (r) {
-                    is BigDecimal -> l + r
-                    is BigInteger -> l + r.toBigDecimal()
-                    else -> TODO()
-                }
-            }
-
-            is BigInteger -> {
-                when (r) {
-                    is BigInteger -> l + r
-                    is BigDecimal -> l.toBigDecimal() + r
-                    else -> TODO()
-                }
-            }
-
-            else -> TODO()
-        }
+    private fun assign(left: Any, right: Any): Any {
+        //environment[(left as Expr.Literal).value] = right
+        return right
     }
-
-    private fun subtract(left: Expr, right: Expr): Any {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        return when (l) {
-            is BigDecimal -> {
-                when (r) {
-                    is BigDecimal -> l - r
-                    is BigInteger -> l - r.toBigDecimal()
-                    else -> TODO()
-                }
-            }
-
-            is BigInteger -> {
-                when (r) {
-                    is BigInteger -> l - r
-                    is BigDecimal -> l.toBigDecimal() - r
-                    else -> TODO()
-                }
-            }
-
-            else -> TODO()
-        }
-    }
-
-    private fun multiply(left: Expr, right: Expr): Any {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        try {
-            return when (l) {
-                is BigDecimal -> {
-                    when (r) {
-                        is BigDecimal -> l * r
-                        is BigInteger -> l * r.toBigDecimal()
-                        else -> TODO()
-                    }
-                }
-
-                is BigInteger -> {
-                    when (r) {
-                        is BigInteger -> l * r
-                        is BigDecimal -> l.toBigDecimal() * r
-                        else -> TODO()
-                    }
-                }
-
-                else -> TODO()
-            }
-        } catch (e: Exception) {
-            return Double.NaN
-        }
-    }
-
-    private fun divide(left: Expr, right: Expr): Any {
-        val l = evaluate(left)
-        val r = evaluate(right)
-        return when (l) {
-            is BigDecimal -> {
-                when (r) {
-                    is BigDecimal -> l / r
-                    is BigInteger -> l / r.toBigDecimal()
-                    else -> TODO()
-                }
-            }
-
-            is BigInteger -> {
-                when (r) {
-                    is BigInteger -> l / r
-                    is BigDecimal -> l.toBigDecimal() / r
-                    else -> TODO()
-                }
-            }
-
-            else -> TODO()
+    private fun intersect(left: Any, right: Any): MutableList<Any> {
+        return if (left is MutableList<*> && right is MutableList<*>) {
+            (left.toSet() intersect right.toSet()).filterNotNull().toMutableList()
+        } else if (left is MutableList<*>) {
+            if (right in left) mutableListOf(right) else emptyList<Any>().toMutableList()
+        } else if (right is MutableList<*>) {
+            if (left in right) mutableListOf(left) else emptyList<Any>().toMutableList()
+        } else {
+            emptyList<Any>().toMutableList()
         }
     }
 
     private fun cons(left: Any, right: Any): MutableList<Any> {
+        @Suppress("UNCHECKED_CAST")
         val result: MutableList<Any> = if (left is MutableList<*>) left as MutableList<Any> else mutableListOf(left)
         result.add(right)
         return result
     }
 
-    private fun io(left: Any, right: Any) {
+    private fun io(left: Any, right: Any): Any {
         when (right) {
-            "in" -> TODO()
-            "out" -> TODO()
-            "err" -> TODO()
-            "now" -> TODO()
-            else -> TODO()
-        }
+            // TODO reconhecer o identifier após o @
+            "in" -> readln()
+            "out" -> println(left)
+            "err" -> System.err.println(left)
+            "now" -> now().toEpochSecond(ZoneOffset.UTC)
+            }
+        return left
     }
 
     override fun visitUnaryExpr(expr: Expr.Unary): Any {
@@ -202,11 +126,6 @@ class Interpreter : Expr.Visitor<Any> {
     private fun isTruthy(obj: Any?): Boolean {
         if (obj == null) return false
         return if (obj is Boolean) obj else true
-    }
-
-    private fun isEqual(a: Any?, b: Any?): Boolean {
-        if (a == null && b == null) return true
-        return if (a == null) false else a == b
     }
 
     private fun checkNumberOperand(operator: Token, operand: Any) {
