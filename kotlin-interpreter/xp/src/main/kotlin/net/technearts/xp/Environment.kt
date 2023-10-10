@@ -6,11 +6,8 @@ class Environment(private val enclosing: Environment? = null) {
         if (values.containsKey(name.lexeme)) {
             return values[name.lexeme]
         }
-        if (enclosing != null) return enclosing[name];
-        throw Interpreter.RuntimeError(
-            name,
-            "Undefined variable '" + name.lexeme + "'."
-        )
+        if (enclosing != null) return enclosing[name]
+        throw RuntimeException("Undefined variable '$name'.")
     }
 
     operator fun set(name: Token, value: Any?) {

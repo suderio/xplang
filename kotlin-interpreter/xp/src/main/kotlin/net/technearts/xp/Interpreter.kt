@@ -2,6 +2,7 @@ package net.technearts.xp
 
 import net.technearts.xp.TokenType.*
 import java.math.BigDecimal
+import java.math.BigInteger
 import java.time.LocalDateTime.now
 import java.time.ZoneOffset
 
@@ -59,7 +60,7 @@ class Interpreter : Expr.Visitor<Any> {
 
             SEMICOLON -> cons(evaluate(expr.left), evaluate(expr.right))
             AT -> io(evaluate(expr.left), evaluate(expr.right))
-            COLON -> assign(evaluate(expr.left), evaluate(expr.right))
+            COLON -> assign(expr.left, expr.right)
             DOT_DOT -> evaluate(expr.left) as BigDecimal..evaluate(expr.right) as BigDecimal
             DOT -> intersect(evaluate(expr.left), evaluate(expr.right))
 
@@ -67,10 +68,15 @@ class Interpreter : Expr.Visitor<Any> {
         }
     }
 
-    private fun assign(left: Any, right: Any): Any {
-        //environment[(left as Expr.Literal).value] = right
-        return right
+    private fun assign(left: Expr, right: Expr): Any {
+        if (left is Expr.Variable) {
+            environment[left.name] = evaluate(right)
+            return environment[left.name]!!
+        } else {
+            throw RuntimeException("Assignment must have a variable name on the left side.")
+        }
     }
+
     private fun intersect(left: Any, right: Any): MutableList<Any> {
         return if (left is MutableList<*> && right is MutableList<*>) {
             (left.toSet() intersect right.toSet()).filterNotNull().toMutableList()
@@ -84,8 +90,8 @@ class Interpreter : Expr.Visitor<Any> {
     }
 
     private fun cons(left: Any, right: Any): MutableList<Any> {
-        @Suppress("UNCHECKED_CAST")
-        val result: MutableList<Any> = if (left is MutableList<*>) left as MutableList<Any> else mutableListOf(left)
+        @Suppress("UNCHECKED_CAST") val result: MutableList<Any> =
+            if (left is MutableList<*>) left as MutableList<Any> else mutableListOf(left)
         result.add(right)
         return result
     }
@@ -97,7 +103,7 @@ class Interpreter : Expr.Visitor<Any> {
             "out" -> println(left)
             "err" -> System.err.println(left)
             "now" -> now().toEpochSecond(ZoneOffset.UTC)
-            }
+        }
         return left
     }
 
@@ -106,13 +112,18 @@ class Interpreter : Expr.Visitor<Any> {
 
         return when (expr.operator.type) {
             TILDE -> isTruthy(right)
-            MINUS -> {
-                checkNumberOperand(expr.operator, right)
-                -(right as BigDecimal)
+            MINUS -> when (right) {
+                is BigDecimal -> -right
+                is BigInteger -> -right
+                else -> throw RuntimeError(expr.operator, "Operand must be a number: $right")
             }
 
             else -> {}
         }
+    }
+
+    override fun visitVariableExpr(variable: Expr.Variable): Any {
+            return if (environment[variable.name] != null) environment[variable.name]!! else variable
     }
 
     override fun visitGroupingExpr(expr: Expr.Grouping): Any {
@@ -128,8 +139,4 @@ class Interpreter : Expr.Visitor<Any> {
         return if (obj is Boolean) obj else true
     }
 
-    private fun checkNumberOperand(operator: Token, operand: Any) {
-        if (operand is BigDecimal) return
-        throw RuntimeError(operator, "Operand must be a number.")
-    }
 }
