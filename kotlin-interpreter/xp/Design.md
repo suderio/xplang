@@ -2,7 +2,35 @@
 
 A fully turing complete expression language
 
-## Operations
+## Types
+
+* Numeric
+  * Integer
+  * Real
+  * Rational (tbd)
+  * Complex (tbd)
+  * Char
+  * Boolean
+* List
+  * String (List of Char)
+  * Linked
+  * Array
+  * Map
+* Operator
+  * Unary
+  * Binary
+* Special
+  * Index
+
+## Reserved words
+
+* true
+* false
+* this
+* right
+* left
+
+## Operators
 
 ### Unary
 
@@ -12,7 +40,7 @@ Acts at the right operand with the lowest precedence.
 -(3 + 1)
 > -4
 
-!true
+~true
 > false
 
 fact 4
@@ -28,7 +56,7 @@ result : 1 + 1
 > 2
 
 [1, 2, 3] . 1
-> 2
+> 1
 ```
 
 ### Defining Operations
@@ -38,21 +66,20 @@ Using the left and right references.
 ```
 fact: {[true: 1, false: right * (this (right - 1))] . right <= 1}
 fact 3
-[true: 1, false: 3 * this (3 - 1)] . 3 <= 1
-[true: 1, false: 3 * this (2)] . false
-3 * [true: 1, false: 2 * this (2 - 1)] . 2 <= 1
-3 * [true: 1, false: 2 * this (1)] . false
-3 * 2 * this (1)
-3 * 2 * [true: 1, false: 1 * this (1 - 1)] . 1 <= 1
-3 * 2 * [true: 1, false: 1 * this (0)] . true
-3 * 2 * 1
-6
-
-fact
+> [true: 1, false: 3 * this (3 - 1)] . 3 <= 1
+> [true: 1, false: 3 * this (2)] . false
+> 3 * [true: 1, false: 2 * this (2 - 1)] . 2 <= 1
+> 3 * [true: 1, false: 2 * this (1)] . false
+> 3 * 2 * this (1)
+> 3 * 2 * [true: 1, false: 1 * this (1 - 1)] . 1 <= 1
+> 3 * 2 * [true: 1, false: 1 * this (0)] . true
+> 3 * 2 * 1
+> 6
 
 succ: right + 1
 succ 1
-2
+> 1 + 1
+> 2
 ```
 
 ## Basic Syntax
@@ -61,47 +88,41 @@ succ 1
 Arithm: + - * / ^ % ( ) 
 Comp: < > <= >= = <> # lt gt le ge eq ne
 Logic: | || & && ~ true false # or or! and and! not
-List: [ ] : " { } .. # Llist Rlist Def/key String LIndex RIndex Intersect Range
-Reference: left right this null :=
+List: [ ] ; " { } . .. # Llist Rlist Cons String LIndex RIndex Intersect Range
+Reference: left right this null :
 Comment: # 
-IO: @ # @in @out @err @/file
+IO: @ # @in @out @err @file
 
-[0 1] + 1 = [1 2]
-[0 1] + [1] = [1 1]
-[0 1] + [1 2] = [1 3]
+[0 1] + 1 = 3
+[0 1] + [1] = 3
+[0 1] + [1 2] = 4
 
-[0 1] < [5] = true
+[0 1] < [5] = false
 [0 1] < 5 = true
 
-[1 2] & 1 = 2
-3 & [1 2] = null
-[1 2] | 1 = [1 2 2]
-[1 2] & [] = [1 2]
-[1 2] | [2] = [1 2 2]
+[1 2] & 1 = true
+3 & [1 2] = true
+[1 2] | 0 = true
+[1 2] & [] = false
+[1 2] | [2] = true
 
 "string" = ['s' 't' 'r' 'i' 'n' 'g']
 's' + 1 = 't'
 's' * 2 = ?
 
-[1 2 3] & {1 2} = [2 3]
-[1 2 3] & [1 2] = [1 2]
-[1 2 3] & 2 = 3
-
-[1 2 3] & {1 ...} = [2 3]
-[1 2 3] & {... 1} = [1 2]
-[1 2 3] & [2 ... 5] = [2 3]
-[1 2 3] & 4 = null
-[1] & [2 3] = []
-
-[a: 1 b: 2 c: 4] & {a b} = [1 2]
-[a: 1 b: 2 c: 4] & [a b] = []
-[a: 1 b: 2 c: 4] & [1 2] = [a: 1 b: 2] ???
-
 a: 1; b: 2; c: 4 = [a: 1 b: 2 c: 4]
-'0; ...; '5 = {0 ... 5}
 ```
 
 ## Grammar
+program     : expression* EOF ;
+expression  : binary ;
+binary      : unary (binaryOp unary)* ;
+binaryOp    : "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "@" | ":" | ";" | "|" | "||" | "&" | "&&" | "^" | "%" | IDENTIFIER
+unary       : unaryOp unary | primary ;
+unaryOp     : "~" | "-" | IDENTIFIER
+primary     : "true" | "false" | "null" | "this" | "right" | "left" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;
+
+---
 
 program        → statement* EOF ;
 statement      → exprStmt | printStmt ;
@@ -132,10 +153,3 @@ factor      : unary ( ( "/" | "*" ) unary )* ;
 unary       : ( "~" | "-" ) unary | primary ;
 primary     : NUMBER | STRING | "true" | "false" | "null" | "this" | "right" | "left" | "(" expression ")" | IDENTIFIER ;
 
-file        : expression* EOF ;
-expression  : binary ;
-binary      : unary (binaryOp unary)* ;
-binaryOp    : "!=" | "==" | ">" | ">=" | "<" | "<=" | "-" | "+" | "/" | "*" | "@" | ":" | ";" | "|" | "||" | "&" | "&&" | "^" | "%" | IDENTIFIER
-unary       : unaryOp unary | primary ;
-unaryOp     : "~" | "-" | IDENTIFIER
-primary     : "true" | "false" | "null" | "this" | "right" | "left" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;
