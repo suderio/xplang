@@ -2,6 +2,7 @@ package net.technearts.xp
 
 import net.technearts.xp.TokenType.*
 
+
 class Parser(private val tokens: List<Token>) {
     private class ParseError : RuntimeException()
 
@@ -82,7 +83,22 @@ class Parser(private val tokens: List<Token>) {
             val right = unary()
             return Expr.Unary(operator, right)
         }
-        return primary()
+        return unaryCall()
+    }
+    private fun unaryCall(): Expr {
+        var expr: Expr = primary()
+        while (true) {
+            if (match(DOLLAR)) {
+                expr = finishCall(expr)
+            } else {
+                break
+            }
+        }
+        return expr
+    }
+
+    private fun finishCall(callee: Expr): Expr {
+        return Expr.Call(callee, expression())
     }
 
     private fun primary(): Expr {

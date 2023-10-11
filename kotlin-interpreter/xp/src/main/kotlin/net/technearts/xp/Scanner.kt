@@ -51,6 +51,7 @@ internal class Scanner(private val source: String) {
             '@' -> addToken(AT)
             '/' -> addToken(SLASH)
             ':' -> addToken(COLON)
+            '$' -> addToken(DOLLAR)
             '<' -> addToken(if (match('=')) LESS_EQUAL else if (match('>')) LESS_GREATER else LESS)
             '>' -> addToken(if (match('=')) GREATER_EQUAL else GREATER)
             '|' -> addToken(if (match('|')) PIPE_PIPE else PIPE)

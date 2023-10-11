@@ -8,6 +8,7 @@ class ExpressionTest {
 
     @Test
     fun arithmetics() {
+        println("Testing Arithmetic Operators")
         Assertions.assertDoesNotThrow {
             runFile(Paths.get("./src/test/resources/Arithmetics").toRealPath().pathString)
         }
@@ -15,6 +16,7 @@ class ExpressionTest {
 
     @Test
     fun comparisons() {
+        println("Testing Comparison Operators")
         Assertions.assertDoesNotThrow {
             runFile(Paths.get("./src/test/resources/Comparisons").toRealPath().pathString)
         }
@@ -22,8 +24,17 @@ class ExpressionTest {
 
     @Test
     fun lists() {
+        println("Testing List Operators")
         Assertions.assertDoesNotThrow {
             runFile(Paths.get("./src/test/resources/Lists").toRealPath().pathString)
+        }
+    }
+
+    @Test
+    fun operators() {
+        println("Testing Custom Operators")
+        Assertions.assertDoesNotThrow {
+            runFile(Paths.get("./src/test/resources/Operators").toRealPath().pathString)
         }
     }
 }

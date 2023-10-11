@@ -6,10 +6,37 @@ import java.math.BigInteger
 import java.time.LocalDateTime.now
 import java.time.ZoneOffset
 
+
 class Interpreter : Expr.Visitor<Any> {
     class RuntimeError(val token: Token, message: String?) : RuntimeException(message)
 
+    interface XpUnaryCallable {
+        fun call(interpreter: Interpreter, right: Any): Any
+    }
+
+    interface XpBinaryCallable {
+        fun call(interpreter: Interpreter, left: Any, right: Any): Any
+    }
+
     private val environment = Environment()
+
+    init {
+        environment["cproduct"] = object : XpBinaryCallable {
+            override fun call(interpreter: Interpreter, left: Any, right: Any): Any {
+                return -(left as BigInteger * right as BigInteger)
+            }
+        }
+
+        environment["size"] = object : XpUnaryCallable {
+            override fun call(interpreter: Interpreter, right: Any): Any {
+                return when (right) {
+                    is List<*> -> right.size
+                    is String -> right.length
+                    else -> 0
+                }
+            }
+        }
+    }
     fun interpret(expressions: List<Expr>) {
         try {
             for (expression in expressions) {
@@ -64,7 +91,14 @@ class Interpreter : Expr.Visitor<Any> {
             DOT_DOT -> evaluate(expr.left) as BigDecimal..evaluate(expr.right) as BigDecimal
             DOT -> intersect(evaluate(expr.left), evaluate(expr.right))
 
-            else -> {}
+            else -> if (expr.operator in environment) {
+                val op = environment[expr.operator]
+                if (op is XpBinaryCallable) {
+                    op.call(this, evaluate(expr.left), evaluate(expr.right))
+                } else {
+                    throw RuntimeException("${expr.operator} is not a binary operator")
+                }
+            } else throw RuntimeException("${expr.operator} is not a known binary operator")
         }
     }
 
@@ -118,12 +152,24 @@ class Interpreter : Expr.Visitor<Any> {
                 else -> throw RuntimeError(expr.operator, "Operand must be a number: $right")
             }
 
-            else -> {}
+            else -> if (expr.operator in environment) {
+                val op = environment[expr.operator]
+                if (op is XpUnaryCallable) {
+                    op.call(this, right)
+                } else {
+                    throw RuntimeException("${expr.operator} is not an unary operator")
+                }
+            } else throw RuntimeException("${expr.operator} is not a known unary operator")
         }
     }
 
-    override fun visitVariableExpr(variable: Expr.Variable): Any {
-            return if (environment[variable.name] != null) environment[variable.name]!! else variable
+    override fun visitCallExpr(expr: Expr.Call): Any {
+        val callee = evaluate(expr.callee)
+        val function = callee as XpUnaryCallable
+        return function.call(this, evaluate(expr.argument))
+    }
+    override fun visitVariableExpr(expr: Expr.Variable): Any {
+            return if (environment[expr.name] != null) environment[expr.name]!! else expr
     }
 
     override fun visitGroupingExpr(expr: Expr.Grouping): Any {
